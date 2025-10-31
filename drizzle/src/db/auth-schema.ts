@@ -1,9 +1,14 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, varchar, jsonb } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
 
 export const user = pgTable("user", {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
+    timezone: varchar("timezone", { length: 64 }).default(sql`'Asia/Kolkata'`),
+    locale: varchar("locale", { length: 32 }).default(sql`'en-IN'`),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
     emailVerified: boolean("email_verified").default(false).notNull(),
     image: text("image"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
