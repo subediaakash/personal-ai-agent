@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: personal-ai-agent-postgres
+    environment:
+      POSTGRES_DB: aiAgent
+      POSTGRES_USER: aiAgent
+      POSTGRES_PASSWORD: aiAgent
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
