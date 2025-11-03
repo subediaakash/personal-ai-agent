@@ -19,6 +19,7 @@ export const plans = pgTable("plans", {
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
     is_template: boolean("is_template").default(false),
+
 });
 
 /**
