@@ -48,7 +48,7 @@ function toDate(value: string | Date | undefined): Date | undefined {
     return d;
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         const h = await headers();
         const session = await auth.api.getSession({ headers: h });
