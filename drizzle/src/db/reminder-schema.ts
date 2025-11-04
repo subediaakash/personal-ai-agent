@@ -1,16 +1,33 @@
-import { boolean, integer, pgTable, text, timestamp, uuid, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import {
+    boolean,
+    integer,
+    jsonb,
+    pgEnum,
+    pgTable,
+    text,
+    timestamp,
+    uuid,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth-schema";
 import { task } from "./task-schema";
 import { planBlocks } from "./plan-schema";
-export const reminderChannel = pgEnum("reminder_channel", ["in_app", "email", "telegram", "whatsapp"]);
+export const reminderChannel = pgEnum("reminder_channel", [
+    "in_app",
+    "email",
+    "telegram",
+    "whatsapp",
+]);
 
 export const reminders = pgTable("reminders", {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    user_id: uuid("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+    user_id: text("user_id").references(() => user.id, { onDelete: "cascade" })
+        .notNull(),
     // Link to a task or plan_block (one of them non-null)
     task_id: uuid("task_id").references(() => task.id, { onDelete: "cascade" }),
-    plan_block_id: uuid("plan_block_id").references(() => planBlocks.id, { onDelete: "cascade" }),
+    plan_block_id: uuid("plan_block_id").references(() => planBlocks.id, {
+        onDelete: "cascade",
+    }),
     // when to deliver (UTC)
     deliver_at: timestamp("deliver_at").notNull(),
     // scheduled / delivered / failed

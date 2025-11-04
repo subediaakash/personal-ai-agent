@@ -4,14 +4,24 @@
  * It groups multiple plan_blocks and can be saved as a template/schedule.
  */
 
-import { pgTable, uuid, varchar, text, jsonb, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import {
+    boolean,
+    integer,
+    jsonb,
+    pgTable,
+    text,
+    timestamp,
+    uuid,
+    varchar,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth-schema";
 import { task } from "./task-schema";
 
 export const plans = pgTable("plans", {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    user_id: uuid("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+    user_id: text("user_id").references(() => user.id, { onDelete: "cascade" })
+        .notNull(),
     title: varchar("title", { length: 256 }).notNull(),
     description: text("description"),
     // JSON metadata: source_utterance, model_version, score, tags
@@ -19,7 +29,6 @@ export const plans = pgTable("plans", {
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
     is_template: boolean("is_template").default(false),
-
 });
 
 /**
@@ -29,8 +38,11 @@ export const plans = pgTable("plans", {
  */
 export const planBlocks = pgTable("plan_blocks", {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    plan_id: uuid("plan_id").references(() => plans.id, { onDelete: "cascade" }).notNull(),
-    task_id: uuid("task_id").references(() => task.id, { onDelete: "set null" }),
+    plan_id: uuid("plan_id").references(() => plans.id, { onDelete: "cascade" })
+        .notNull(),
+    task_id: uuid("task_id").references(() => task.id, {
+        onDelete: "set null",
+    }),
     title: varchar("title", { length: 256 }).notNull(),
     notes: text("notes"),
     // block start / end in UTC (store timezone separately if needed)
@@ -42,4 +54,3 @@ export const planBlocks = pgTable("plan_blocks", {
     order_index: integer("order_index").default(0), // ordering within plan
     created_at: timestamp("created_at").defaultNow().notNull(),
 });
-

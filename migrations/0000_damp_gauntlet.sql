@@ -53,8 +53,8 @@ CREATE TABLE "verification" (
 );
 --> statement-breakpoint
 CREATE TABLE "task" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" uuid NOT NULL,
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "user_id" text NOT NULL,
 	"title" text NOT NULL,
 	"description" text,
 	"priority" "task_priority" DEFAULT 'medium' NOT NULL,
@@ -86,8 +86,8 @@ CREATE TABLE "plan_blocks" (
 );
 --> statement-breakpoint
 CREATE TABLE "plans" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" uuid NOT NULL,
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "user_id" text NOT NULL,
 	"title" varchar(256) NOT NULL,
 	"description" text,
 	"metadata" jsonb DEFAULT '{}'::jsonb,
@@ -97,8 +97,8 @@ CREATE TABLE "plans" (
 );
 --> statement-breakpoint
 CREATE TABLE "reminders" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" uuid NOT NULL,
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+    "user_id" text NOT NULL,
 	"task_id" uuid,
 	"plan_block_id" uuid,
 	"deliver_at" timestamp NOT NULL,
@@ -112,8 +112,8 @@ CREATE TABLE "reminders" (
 );
 --> statement-breakpoint
 CREATE TABLE "audits" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"user_id" uuid,
+    "id" serial PRIMARY KEY NOT NULL,
+    "user_id" text,
 	"entity" varchar(64) NOT NULL,
 	"entity_id" uuid,
 	"action" varchar(128) NOT NULL,

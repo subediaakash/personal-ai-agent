@@ -7,10 +7,11 @@ import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 
 export function SigninPage() {
+    const router = useRouter();
 
     const handleGoogleSignIn = async () => {
         try {
@@ -24,7 +25,7 @@ export function SigninPage() {
                     description: data.error.message ?? "Something went wrong. Please try again.",
                 });
             }
-            redirect("/");
+            router.push("/");
         } catch (err) {
             console.error("Unexpected sign-in error:", err);
             toast.error("Google sign-in error", {

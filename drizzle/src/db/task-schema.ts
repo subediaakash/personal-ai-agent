@@ -1,4 +1,3 @@
-
 /**
  * tasks
  * Core model for user tasks extracted by the LLM.
@@ -11,18 +10,35 @@
  * - semantic_metadata: additional structured fields parsed by LLM (jsonb)
  */
 
-import { boolean, jsonb, pgTable, text, timestamp, integer, uuid, pgEnum } from "drizzle-orm/pg-core";
+import {
+    boolean,
+    integer,
+    jsonb,
+    pgEnum,
+    pgTable,
+    text,
+    timestamp,
+    uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 import { sql } from "drizzle-orm";
 
-export const priority = pgEnum("task_priority", ["low", "medium", "high", "urgent"]);
-export const taskStatus = pgEnum("task_status", ["pending", "completed", "snoozed", "cancelled"]);
-
-
+export const priority = pgEnum("task_priority", [
+    "low",
+    "medium",
+    "high",
+    "urgent",
+]);
+export const taskStatus = pgEnum("task_status", [
+    "pending",
+    "completed",
+    "snoozed",
+    "cancelled",
+]);
 
 export const task = pgTable("task", {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    user_id: uuid("user_id")
+    user_id: text("user_id")
         .references(() => user.id, { onDelete: "cascade" })
         .notNull(),
     title: text("title").notNull(),
@@ -44,11 +60,4 @@ export const task = pgTable("task", {
     completed_at: timestamp("completed_at"),
     // Soft-deletion (allows undo)
     deleted: boolean("deleted").default(false),
-
-
-
-
-
-
-
-})
+});
