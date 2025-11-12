@@ -4,16 +4,42 @@ import { auth } from "@/lib/auth";
 import { db } from "@/drizzle/src";
 import { eq, inArray } from "drizzle-orm";
 import {
-    plans as plansTable,
     planBlocks as planBlocksTable,
+    plans as plansTable,
 } from "@/drizzle/src/db/plan-schema";
 import {
-    task as taskTable,
     priority as taskPriorityEnum,
+    task as taskTable,
 } from "@/drizzle/src/db/task-schema";
 
 // Types for request validation
 type Priority = "low" | "medium" | "high" | "urgent";
+type InlineTaskInput = {
+    id?: string;
+    title?: string;
+    description?: string;
+    priority?: Priority;
+    dueDate?: string | Date;
+    scheduledStart?: string | Date;
+    scheduledEnd?: string | Date;
+    rawInput?: string;
+    parser_confidence?: number;
+    parserConfidence?: number;
+    semantic_metadata?: Record<string, unknown>;
+    semanticMetadata?: Record<string, unknown>;
+};
+type BlockInput = {
+    title?: string;
+    notes?: string;
+    startTs?: string | Date;
+    endTs?: string | Date;
+    start_ts?: string | Date;
+    end_ts?: string | Date;
+    location?: string;
+    orderIndex?: number;
+    order_index?: number;
+    task?: InlineTaskInput;
+};
 type CreatePlanRequest = {
     title: string;
     description?: string;
@@ -26,18 +52,7 @@ type CreatePlanRequest = {
         end_ts: string | Date;
         location?: string;
         order_index?: number;
-        task?: {
-            id?: string; // use an existing task
-            title?: string; // or create a task inline
-            description?: string;
-            priority?: Priority;
-            due_date?: string | Date;
-            scheduled_start?: string | Date;
-            scheduled_end?: string | Date;
-            raw_input?: string;
-            parser_confidence?: number;
-            semantic_metadata?: Record<string, unknown>;
-        };
+        task?: InlineTaskInput;
     }>;
 };
 
@@ -53,7 +68,9 @@ export async function GET() {
         const h = await headers();
         const session = await auth.api.getSession({ headers: h });
         if (!session?.user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "Unauthorized" }, {
+                status: 401,
+            });
         }
 
         // Fetch plans with blocks and tasks
@@ -66,7 +83,7 @@ export async function GET() {
             .from(plansTable)
             .leftJoin(
                 planBlocksTable,
-                eq(planBlocksTable.plan_id, plansTable.id)
+                eq(planBlocksTable.plan_id, plansTable.id),
             )
             .leftJoin(taskTable, eq(planBlocksTable.task_id, taskTable.id))
             .where(eq(plansTable.user_id, session.user.id));
@@ -139,7 +156,7 @@ export async function GET() {
         const plans = Array.from(byPlan.values()).map((p) => ({
             ...p,
             blocks: p.blocks.sort(
-                (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
+                (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
             ),
         }));
 
@@ -148,7 +165,7 @@ export async function GET() {
         console.error("Error fetching user plans:", error);
         return NextResponse.json(
             { error: "Internal Server Error" },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }
@@ -158,7 +175,9 @@ export async function POST(req: NextRequest) {
         const h = await headers();
         const session = await auth.api.getSession({ headers: h });
         if (!session?.user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "Unauthorized" }, {
+                status: 401,
+            });
         }
 
         const body = (await req.json()) as CreatePlanRequest;
@@ -167,37 +186,43 @@ export async function POST(req: NextRequest) {
         if (!body?.title || typeof body.title !== "string") {
             return NextResponse.json(
                 { error: "title is required" },
-                { status: 400 }
+                { status: 400 },
             );
         }
         if (!Array.isArray(body.blocks) || body.blocks.length === 0) {
             return NextResponse.json(
                 { error: "blocks must be a non-empty array" },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
         // Validate blocks and dates early
         for (let i = 0; i < body.blocks.length; i++) {
-            const b = body.blocks[i];
-            const start = toDate(b.start_ts);
-            const end = toDate(b.end_ts);
+            const b = body.blocks[i] as unknown as BlockInput;
+            const start = toDate(b.startTs ?? b.start_ts);
+            const end = toDate(b.endTs ?? b.end_ts);
             if (!start || !end) {
                 return NextResponse.json(
-                    { error: `blocks[${i}]: start_ts and end_ts must be valid dates` },
-                    { status: 400 }
+                    {
+                        error:
+                            `blocks[${i}]: start_ts and end_ts must be valid dates`,
+                    },
+                    { status: 400 },
                 );
             }
             if (end.getTime() < start.getTime()) {
                 return NextResponse.json(
                     { error: `blocks[${i}]: end_ts must be after start_ts` },
-                    { status: 400 }
+                    { status: 400 },
                 );
             }
-            if (b.task?.priority && !["low", "medium", "high", "urgent"].includes(b.task.priority)) {
+            if (
+                b.task?.priority &&
+                !["low", "medium", "high", "urgent"].includes(b.task.priority)
+            ) {
                 return NextResponse.json(
                     { error: `blocks[${i}].task.priority is invalid` },
-                    { status: 400 }
+                    { status: 400 },
                 );
             }
         }
@@ -231,18 +256,21 @@ export async function POST(req: NextRequest) {
                 const ownedSet = new Set(owned.map((r) => r.id));
                 for (const tId of existingTaskIds) {
                     if (!ownedSet.has(tId)) {
-                        throw new Error(`Task ${tId} not found or not owned by user`);
+                        throw new Error(
+                            `Task ${tId} not found or not owned by user`,
+                        );
                     }
                 }
             }
 
             // 3) Create tasks as needed and collect plan block rows
-            const planBlockRows: Array<typeof planBlocksTable.$inferInsert> = [];
+            const planBlockRows: Array<typeof planBlocksTable.$inferInsert> =
+                [];
 
             for (let i = 0; i < body.blocks.length; i++) {
-                const b = body.blocks[i];
-                const start = toDate(b.start_ts)!;
-                const end = toDate(b.end_ts)!;
+                const b = body.blocks[i] as unknown as BlockInput;
+                const start = toDate(b.startTs ?? b.start_ts)!;
+                const end = toDate(b.endTs ?? b.end_ts)!;
 
                 // Determine task_id
                 let taskId: string | null = null;
@@ -256,17 +284,48 @@ export async function POST(req: NextRequest) {
                             user_id: userId,
                             title: b.task.title,
                             description: b.task.description ?? null,
-                            priority: (b.task.priority ?? "medium") as typeof taskPriorityEnum.enumValues[number],
-                            due_date: toDate(b.task.due_date),
-                            scheduled_start: toDate(b.task.scheduled_start),
-                            scheduled_end: toDate(b.task.scheduled_end),
-                            raw_input: b.task.raw_input ?? null,
+                            priority: (b.task.priority ??
+                                "medium") as typeof taskPriorityEnum.enumValues[
+                                    number
+                                ],
+                            due_date: toDate(
+                                b.task.dueDate ??
+                                    (b.task as { due_date?: string | Date })
+                                        .due_date,
+                            ),
+                            scheduled_start: toDate(
+                                b.task.scheduledStart ??
+                                    (b.task as {
+                                        scheduled_start?: string | Date;
+                                    }).scheduled_start,
+                            ),
+                            scheduled_end: toDate(
+                                b.task.scheduledEnd ??
+                                    (b.task as {
+                                        scheduled_end?: string | Date;
+                                    }).scheduled_end,
+                            ),
+                            raw_input: b.task.rawInput ??
+                                (b.task as { raw_input?: string }).raw_input ??
+                                null,
                             parser_confidence:
-                                typeof b.task.parser_confidence === "number"
-                                    ? Math.max(0, Math.min(100, b.task.parser_confidence))
+                                typeof b.task.parserConfidence === "number"
+                                    ? Math.max(
+                                        0,
+                                        Math.min(100, b.task.parserConfidence),
+                                    )
+                                    : typeof b.task.parser_confidence ===
+                                            "number"
+                                    ? Math.max(
+                                        0,
+                                        Math.min(100, b.task.parser_confidence),
+                                    )
                                     : 0,
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            semantic_metadata: (b.task.semantic_metadata as any) ?? {},
+                            semantic_metadata: b.task.semanticMetadata ??
+                                (b.task as {
+                                    semantic_metadata?: Record<string, unknown>;
+                                }).semantic_metadata ??
+                                {},
                         })
                         .returning({ id: taskTable.id });
                     taskId = newTask.id;
@@ -284,7 +343,11 @@ export async function POST(req: NextRequest) {
                     end_ts: end,
                     location: b.location ?? null,
                     completed: false,
-                    order_index: typeof b.order_index === "number" ? b.order_index : i,
+                    order_index: typeof b.orderIndex === "number"
+                        ? b.orderIndex
+                        : (typeof b.order_index === "number"
+                            ? b.order_index
+                            : i),
                 });
             }
 
@@ -301,7 +364,7 @@ export async function POST(req: NextRequest) {
                 .from(plansTable)
                 .leftJoin(
                     planBlocksTable,
-                    eq(planBlocksTable.plan_id, plansTable.id)
+                    eq(planBlocksTable.plan_id, plansTable.id),
                 )
                 .leftJoin(taskTable, eq(planBlocksTable.task_id, taskTable.id))
                 .where(eq(plansTable.id, planId));
@@ -353,7 +416,7 @@ export async function POST(req: NextRequest) {
                 }
             }
             resultPlan.blocks.sort(
-                (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
+                (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
             );
 
             return resultPlan;
@@ -372,7 +435,7 @@ export async function POST(req: NextRequest) {
         console.error("Error creating plan:", error);
         return NextResponse.json(
             { error: "Internal Server Error" },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }

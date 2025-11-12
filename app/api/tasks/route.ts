@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/drizzle/src/index";
 import { task } from "@/drizzle/src/db/task-schema";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -23,8 +23,13 @@ const createTaskSchema = z.object({
     semanticMetadata: z.record(z.string(), z.any()).optional(),
 })
     .refine(
-        (v) => !v.scheduledStart || !v.scheduledEnd || v.scheduledEnd > v.scheduledStart,
-        { message: "scheduledEnd must be after scheduledStart", path: ["scheduledEnd"] }
+        (v) =>
+            !v.scheduledStart || !v.scheduledEnd ||
+            v.scheduledEnd > v.scheduledStart,
+        {
+            message: "scheduledEnd must be after scheduledStart",
+            path: ["scheduledEnd"],
+        },
     );
 
 export async function GET(req: Request) {
@@ -69,7 +74,12 @@ export async function GET(req: Request) {
                 description: task.description,
             })
             .from(task)
-            .where(eq(task.user_id, session.user.id))
+            .where(
+                and(
+                    eq(task.user_id, session.user.id),
+                    eq(task.deleted, false),
+                ),
+            )
             .orderBy(orderBy)
             .limit(limit + 1)
             .offset(offset);
@@ -104,7 +114,9 @@ export async function POST(req: Request) {
         const session = await auth.api.getSession({ headers: h });
 
         if (!session?.user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "Unauthorized" }, {
+                status: 401,
+            });
         }
 
         const body = await req.json();
@@ -112,7 +124,7 @@ export async function POST(req: Request) {
         if (!parsed.success) {
             return NextResponse.json(
                 { error: "Invalid request", details: parsed.error.flatten() },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
@@ -152,6 +164,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ data: inserted[0] }, { status: 201 });
     } catch (error) {
         console.error("POST /api/tasks error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, {
+            status: 500,
+        });
     }
 }
